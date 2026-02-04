@@ -66,8 +66,8 @@ The following are not included in the repo but inetgral to the workflow:
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/ahah-v5.git
-cd ahah-v5
+git clone https://github.com/your-org/ahah.git
+cd ahah
 
 # Create environment and install dependencies
 pip install -r requirements.txt
