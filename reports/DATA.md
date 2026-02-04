@@ -1,103 +1,47 @@
-# AHAH Version 4 Data Overview
+# AHAH Version 5 Data Overview
 
-This document provides an overview of the datasets used in the AHAH Version 4 data product. Each dataset is described in terms of its content, source, and production date. The underlying data for _passive greenspace_, and _retail locations_ are not openly available, but were both produced in 2024.
+This document provides an overview of the datasets used in the AHAH Version 5 data product. 
+Each dataset is described in terms of its content, source, and production date. 
 
-All data used to produce AHAH Version 4 was the most recent available at the time of production.
+All data used to produce AHAH Version 5 was the most recent available at the time of production.
 
-## OS Open Roads
+Indicators by Domain
 
-- **Description**: This dataset provides detailed information about the road network in Great Britain.
-- **Source**: [OS Open Roads](https://api.os.uk/downloads/v1/products/OpenRoads/downloads?area=GB&format=GeoPackage&redirect)
-- **Production Date**: 2024
+| Domain | Indicator | Variable | Description |
+| ------ | --------- | -------- | ----------- |
+| Health Services | GP surgeries | `GP` | Drive time to nearest GP practice |
+| Health Services | Dentists | `dentist` | Drive time to nearest dental practice |
+| Health Services | Pharmacies | `pharmacy` | Drive time to nearest pharmacy |
+| Health Services | Hospitals | `hospital` | Drive time to nearest hospital |
+| Health Services | Leisure centres | `leisure` | Drive time to nearest leisure facility |
+| Green/Blue Space | Passive greenspace | `greenspace` | Median NDVI value (higher = greener) |
+| Green/Blue Space | Active greenspace | `greenspace_active` | Drive time to nearest accessible green space |
+| Green/Blue Space | Blue space | `bluespace` | Drive time to nearest water feature |
+| Air Quality | Nitrogen dioxide | `NO2` | Mean NO₂ concentration (µg/m³) |
+| Air Quality | Particulate matter | `PM10` | Mean PM₁₀ concentration (µg/m³) |
+| Air Quality | Sulphur dioxide | `SO2` | Mean SO₂ concentration (µg/m³) |
+| Retail Environment | Fast food | `fast_food` | Drive time to nearest fast food outlet |
+| Retail Environment | Gambling | `gambling` | Drive time to nearest gambling venue |
+| Retail Environment | Pubs/bars | `pub_bar` | Drive time to nearest pub or bar |
+| Retail Environment | Tobacco retailers | `tobacco` | Drive time to nearest tobacco retailer |
 
-## Air Quality Data
 
-- **Description**: Contains air quality data, including pollutant concentrations across the UK.
-- **Sources**:
-  - [UK Air Data](https://uk-air.defra.gov.uk/data/pcm-data)
-  - [PM10 Data](https://uk-air.defra.gov.uk/datastore/pcm/mappm102022g.csv)
-  - [SO2 Data](https://uk-air.defra.gov.uk/datastore/pcm/mapso22022.csv)
-  - [NO2 Data](https://uk-air.defra.gov.uk/datastore/pcm/mapno22022.csv)
-- **Production Date**: 2022
+Data Sources
 
-## Hospitals
+| Indicator | Source | Licence |
+| --------- | ------ | ------- |
+| GP surgeries | NHS Digital / NHS Scotland Open Data | OGL |
+| Pharmacies | NHS Digital / NHS Scotland Open Data | OGL |
+| Hospitals | NHS Organisation Data Service / Spatial Hub Scotland | OGL |
+| Dentists | NHS Digital / NHS Scotland Open Data | OGL |
+| Leisure centres | Local Data Company | Commercial |
+| Passive greenspace (NDVI) | Sentinel-2 via Google Earth Engine | Copernicus |
+| Active greenspace | Ordnance Survey Open Greenspace | OGL |
+| Blue space | OpenStreetMap / OS Open Rivers | ODbL / OGL |
+| Air quality (NO₂, PM₁₀, SO₂) | DEFRA Pollution Climate Mapping (2024) | OGL |
+| Fast food, Gambling, Pubs, Tobacco | Local Data Company | Commercial |
+| Road network | OpenStreetMap via Geofabrik | ODbL |
+| Postcodes | ONS Postcode Directory (November 2025) | OGL |
+| Boundaries | ONS / Scottish Government | OGL |
 
-### England
-
-- **Description**: Provides locations of NHS sites in England.
-- **Source**: [NHS Digital](https://digital.nhs.uk/services/organisation-data-service/export-data-files/csv-downloads/other-nhs-organisations); NHS trust sites
-- **Production Date**: 2024
-
-### Scotland
-
-- **Description**: Provides locations of hospitals in Scotland.
-- **Source**: [NHS Scotland Open Data](https://www.opendata.nhs.scot/dataset/hospital-codes)
-- **Production Date**: 2024
-
-## GP Practices
-
-### England
-
-- **Description**: Provides locations of GP practices in England.
-- **Source**: [NHS Digital](https://digital.nhs.uk/services/organisation-data-service/export-data-files/csv-downloads/gp-and-gp-practice-related-data); GP Practices
-- **Production Date**: 2024
-
-### Scotland
-
-- **Description**: Provides locations of GP practices in Scotland.
-- **Source**: [NHS Scotland Open Data](https://www.opendata.nhs.scot/dataset/gp-practice-contact-details-and-list-sizes)
-- **Production Date**: 2024
-
-## Dentists
-
-### England
-
-- **Description**: Provides locations of dentists in England.
-- **Source**: [NHS Digital](https://digital.nhs.uk/services/organisation-data-service/export-data-files/csv-downloads/miscellaneous); General Dental Practices
-- **Production Date**: 2024
-
-### Scotland
-
-- **Description**: Provides locations of dentists in Scotland.
-- **Source**: [NHS Scotland Open Data](https://www.opendata.nhs.scot/dataset/dental-practices-and-patient-registrations)
-- **Production Date**: 2024
-
-## Pharmacies
-
-### England
-
-- **Description**: Provides locations of pharmacies in England.
-- **Source**: [NHS Digital](https://digital.nhs.uk/services/organisation-data-service/export-data-files/csv-downloads/gp-and-gp-practice-related-data); Dispensaries
-- **Production Date**: 2024
-
-### Scotland
-
-- **Description**: Provides locations of pharmacies in Scotland.
-- **Source**: [NHS Scotland Open Data](https://www.opendata.nhs.scot/dataset/dispenser-location-contact-details)
-- **Production Date**: 2024
-
-### Wales
-
-- **Description**: Provides locations of pharmacies in Wales.
-- **Source**: [NHS Wales](https://nwssp.nhs.wales/ourservices/primary-care-services/general-information/data-and-publications/pharmacy-practice-dispensing-data/)
-- **Production Date**: 2023
-
-## Bluespace
-
-- **Description**: Provides OpenStreetMap data for Great Britain.
-- **Source**: [Geofabrik](https://download.geofabrik.de/europe/great-britain.html)
-- **Production Date**: 2024
-
-This data was then processed to keep only bluespace:
-
-```bash
-##!/bin/bash
-
-osmium tags-filter great-britain-latest.osm.pbf nwr/natural=water w/waterway=* -o gb-water.osm.pbf
-osmium export gb-water.osm.pbf -o gb-water.geojson
-ogr2ogr -f Parquet gb-water.parquet gb-water.geojson 
-
-osmium tags-filter great-britain-latest.osm.pbf w/natural=coastline -o gb-coast.osm.pbf
-osmium export gb-coast.osm.pbf -o gb-coast.geojson
-ogr2ogr -f Parquet gb-coast.parquet gb-coast.geojson 
-```
+ 

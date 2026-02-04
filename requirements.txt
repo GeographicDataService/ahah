@@ -1,0 +1,39 @@
+# AHAH v5 — Access to Healthy Assets and Hazards
+# Python dependencies for the complete AHAH calculation pipeline
+
+# =============================================================================
+# Core Infrastructure (valhalla_cluster.py)
+# =============================================================================
+docker>=6.0.0              # Docker SDK - container management for Valhalla cluster
+pyyaml>=6.0                # YAML parsing for docker-compose generation
+requests>=2.28.0           # HTTP client for Valhalla API and health checks
+
+# =============================================================================
+# Geospatial & Data Processing (poi_accessibility.py, notebooks)
+# =============================================================================
+geopandas>=0.14.0          # Geospatial dataframes and spatial operations
+pandas>=2.0.0              # Data manipulation and analysis
+numpy>=1.24.0              # Numerical computing
+scipy>=1.10.0              # Spatial indexing (cKDTree) and statistics (norm)
+pyarrow>=14.0.0            # Parquet file I/O for efficient data storage
+tqdm>=4.65.0               # Progress bars for long-running operations
+
+# =============================================================================
+# Data Acquisition (AHAH_Data_Setup.ipynb)
+# =============================================================================
+beautifulsoup4>=4.12.0     # HTML parsing for web scraping
+earthengine-api>=0.1.350   # Google Earth Engine for NDVI/greenspace data
+
+# =============================================================================
+# Notes
+# =============================================================================
+# Docker must be installed separately on the host system:
+#   https://docs.docker.com/get-docker/
+#
+# Google Earth Engine requires authentication:
+#   import ee
+#   ee.Authenticate()
+#   ee.Initialize()
+#
+# Selenium requires a browser driver (e.g., ChromeDriver):
+#   https://chromedriver.chromium.org/downloads

@@ -1,116 +1,271 @@
-<div align="center">
+# AHAH v5 — Access to Healthy Assets and Hazards
 
-# Access to Healthy Assets & Hazards (AHAH)
+[Please see the relevant tags in this repo to access the documentation for v3 and v4.]
 
-**Road network routing between postcodes and health related POIs using NetworkX**
-
-<a href="https://dvc.org/"><img alt="DVC" src="https://img.shields.io/badge/DVC-lightblue?style=for-the-badge&logo=dvc&logoColor=white"/></a>
-<a href="https://www.python.org"><img alt="Python" src="https://img.shields.io/badge/python%20-%2314354C.svg?&style=for-the-badge&logo=python&logoColor=white"/></a>
-<a href="https://black.readthedocs.io/en/stable/"><img alt="Code style: black" src="https://img.shields.io/badge/style-black-000000.svg?style=for-the-badge&logo=black&logoColor=white"/></a>
-
-</div>
-
-[Cillian
-Berragan](https://www.liverpool.ac.uk/geographic-data-science/our-people/)
-\[[`@cjberragan`](http://twitter.com/cjberragan)\]<sup>1\*</sup> [Mark
-Green](https://www.liverpool.ac.uk/geographic-data-science/our-people/)
-\[[`@markalangreen`](http://twitter.com/markalangreen)\]<sup>1</sup>
-[Alex
-Singleton](https://www.liverpool.ac.uk/geographic-data-science/our-people/)
-\[[`@alexsingleton`](http://twitter.com/alexsingleton)\]<sup>1</sup>
-
-<sup>1</sup> _Geographic Data Science Lab, University of Liverpool,
-Liverpool, United Kingdom_  
-<sup>\*</sup> _Correspondence_: C.Berragan@liverpool.ac.uk
+A Python toolkit for calculating the Access to Healthy Assets and Hazards (AHAH) index, measuring environmental factors that influence health outcomes at small-area level across Great Britain.
 
 ## Overview
 
-This project identifies the time-weighted distance required to travel by road between every postcode in Great Britain and a selection of health related points of interest. A ranked combination of these drive-times is used to create the AHAH index.
+The AHAH index quantifies spatial accessibility to health-promoting and health-damaging features of the built environment. This repository provides the complete pipeline for calculating AHAH v5, including:
 
-Access is defined through the average time-weighted road network distance for each postcode within each LSOA to the nearest point of interest of a particular type. For this, the road highways network and road speed estimates provided through [Ordnance Survey](https://www.ordnancesurvey.co.uk/business-government/products/open-map-roads) was used, alongside the [ONS Postcode Directory](https://geoportal.statistics.gov.uk/search?q=PRD_ONSPD&sort=Date%20Created%7Ccreated%7Cdesc), which gives centroids for every postcode in the country.
+- **High-performance routing infrastructure** using a Valhalla cluster
+- **Scalable accessibility calculations** from 1.7M+ postcodes to points of interest
+- **Composite index construction** following the established AHAH methodology
 
-This is a computationally intense calculation, with the total road network used having ~3.8 million edges, and \~3.2million nodes. Access to each nearest health related POI was calculated using the _Multi Source Shortest Path_ algorithm, for all ~1.7 million postcodes in Great Britain.
+The index combines four domains:
+- **Health Services** — GP surgeries, pharmacies, hospitals, dentists, leisure centres
+- **Green/Blue Space** — Greenspace (Passive / NDVI), green and bluespace accessibility
+- **Air Quality** — NO₂, PM₁₀, SO₂ concentrations
+- **Retail Hazards** — Fast food outlets, gambling venues, pubs/bars, vape / tobacco retailers
 
-# Project layout
+## Repository Structure
 
-```bash
-ahah
-├── aggregate_lsoa.py  # aggregate outputs to LSOA level
-├── create_index.py  # use aggregates to create index
-├── air_lsoa.py  # process air quality data
-├── preprocess.py  # process all POI data
-├── route.py  # main routing script
-└── common
-    └── utils.py  # utility functions
+```
+├── code/ # Core AHAH calculation modules
+│   ├── __init__.py
+│   ├── valhalla_cluster.py      # Docker-based routing cluster management
+│   └── poi_accessibility.py     # Parallel POI accessibility calculations
+├── AHAH_Data_Setup.ipynb        # Data acquisition and preparation
+├── AHAH_Routing_Cluster_Setup.ipynb  # Valhalla cluster configuration
+├── AHAH_Access_Calculations.ipynb    # Accessibility metric generation
+├── AHAH_Build_Indicator.ipynb   # Final index construction
+├── requirements.txt
+└── README.md
+```
+Additionally - ```vegetation_index.ipynb``` creates NDVI greenspace via GEE. These outputs are integrated into AHAH and also our Greenspace [Supplementary Indicators](https://data.geods.ac.uk/dataset/small-area-uk-vegetation-indices)).
+
+### Repo Data Directory Structure
+
+```
+data/
+├── airquality/        # Air quality surfaces
+├── boundary/          # Census boundary geometries
+├── green_blue/         # NDVI greenspace data
+├── health/              # Health services datasets
+├── postcodes/          # Postcode coordinates with LSOA linkage
+
+The following are not included in the repo but inetgral to the workflow:
+
+├── raw_data/          # Original downloaded datasets - these are not included in the repo and must be downloaded separately
+├── retail/          # Retail data not included in the repo given commercial licensing
+├── routing_results/    # Intermediate routing results
+├── valhalla_tiles/     # Valhalla routing tiles directory
+
 ```
 
-## Methodology
 
-Accessibility measures were created using the `networkx` Python library in conjunction with the OS Open Road network. Unlike similar routing software like Routino, which uses Open Street Map data, the OS Open Road Network provides more accurate road speed estimates for UK roads.
+## Installation
 
-In this study, we measured the network distance (driving travel time) between the centroid of each active postcode in Great Britain to the coordinates of each unique health asset (e.g. GP practice). Measured network distances for each indicator for postcodes were aggregated to the LSOA level, providing average network distance for each indicator (as a measure of accessibility). All other indicators were also summarised for LSOAs. The indicators within each domain were standardised by ranking and transformed to the standard normal distribution. The direction of each variable was dictated by the literature (e.g. accessibility to fast food outlets were identified as health negating, whereas accessibility to GP practices was health promoting).
+### Prerequisites
 
-To calculate our overall index (and domain specific values), we followed the methodology of the 2015 IMD. For each domain, we ranked each domain $R$ and any LSOA scaled to the range $[0,1]$. $R=1/N$ for the most 'health promoting' LSOA and $R=N/N$ for the least promoting, where $N$ is the number of LSOAs in Great Britain. Exponential transformation of the ranked domainscores was then applied to LSOA values to reduce ‘cancellation effects’. So, for example, high levels of accessibility in one domainare not completely cancelled out by low levels of accessibility in a different domain. The exponential  transformation  applied also puts  more  emphasis  on  the LSOAs  at  theend  of  the health demoting side of the distribution and so facilitates identification of the neighbourhoods with the worsthealth promoting aspects. The exponential transformed indicator score $X$ is given by:
+- Python 3.10+
+- Docker (for Valhalla routing cluster)
+- ~6GB disk space for UK routing tiles - there will be a new root directory generated called 'valhalla_tiles'
 
-$$
-X=−23ln(1−R(1−exp^{−100/23}))
-$$
+### Setup
 
-where ‘ln’ denotes natural logarithm and ‘exp’ the exponential transformation.
+```bash
+# Clone the repository
+git clone https://github.com/your-org/ahah-v5.git
+cd ahah-v5
 
-The main domains across our  indicators: retail  services,  health  services, physical  environment and  air quality then were combined to form an overall index of‘Access to Healthy Assets and Hazards’ (AHAH)
+# Create environment and install dependencies
+pip install -r requirements.txt
+```
 
-<div style="text-align: center;">
+### Dependencies
 
-![](./overview.png)
+```
+# Core
+docker>=6.0.0
+pyyaml>=6.0
+requests>=2.28.0
 
-</div>
+# Geospatial
+geopandas>=0.14.0
+pandas>=2.0.0
+numpy>=1.24.0
+scipy>=1.10.0
+pyarrow>=14.0.0
 
-## Methods
+# Progress
+tqdm>=4.65.0
+```
 
-Preprocessing of the OS Open Road network is performed within the [UKRoutes](https://github.com/cjber/ukroutes) Python library. The main `Route` class is defined by this library; using the `multi_source_dijkstra_path_length` function from NetworkX.
+## Workflow
 
-Please see the [UKRoutes methods](https://github.com/cjber/ukroutes?tab=readme-ov-file#routing-methodology) for more information.
+The AHAH calculation follows four sequential stages:
 
-### 2. Process Data `ahah/preprocess.py`
+### 1. Data Setup (`AHAH_Data_Setup.ipynb`)
 
-- Clean raw data
-- Save to parquet files
+Acquires and prepares all input datasets:
+- Census boundary geometries (LSOA/Data Zone for 2021/22)
+- Postcode coordinates with LSOA linkage
+- Points of interest from NHS, OSM, and commercial sources
+- Air quality surfaces from DEFRA
+- NDVI greenspace data via Google Earth Engine
 
-### 3. Routing `ahah/routing.py`
+### 2. Routing Cluster Setup (`AHAH_Routing_Cluster_Setup.ipynb`)
 
-- Iterate over every processed Parquet file in the `data/processed` directory 
-- Use `Route` class from `UKRoutes` to route from POIs to postcodes
-- Write to `data/out` directory
+Configures a parallel Valhalla routing cluster:
 
-### 4. Process air quality data `ahah/process_air.py`
+```python
+from valhalla_cluster import ValhallaCluster
 
-- Create raster of interpolated values from monitoring station points
-  - Exclude points that are _MISSING_
-- Aggregate to LSOA by taking mean values
+cluster = ValhallaCluster(
+    num_workers=8,              # Parallel routing instances
+    base_worker_port=8020,      # Port range start
+    tiles_dir="./valhalla_tiles",
+    tile_url="https://download.geofabrik.de/europe/united-kingdom-latest.osm.pbf"
+)
 
-### 5. Combine into index `ahah/create_index.py`
+# Build routing tiles (one-time, ~20 minutes)
+cluster.build_tiles()
+cluster.generate_compose()
+cluster.apply_optimisations()
+cluster.start()
+```
 
-- Combine both processed secure and open data
-- Intermediate variables calculated
-  - All variables ranked
-  - Exponential default calculated for all ranked variables
-  - Percentiles calculated from ranked variables
-- Domains Scores calculated
-  - Domain scores calculated from mean of each domains input variables
-  - Domain scores ranked
-  - Domain percentiles calculated
-  - Exponential transformation calculated for each domain
-- AHAH index calculated from mean of domain exponential transformations
-  - Ranked AHAH index calculated
-  - AHAH percentiles calculated
+### 3. Accessibility Calculations (`AHAH_Access_Calculations.ipynb`)
 
-## AHAH Data Sources
+Computes travel times from every postcode to nearest POIs:
 
-See [DATA.md](reports/DATA.md) for current data sources.
+```python
+from poi_accessibility import POIAccessibilityCalculator
 
-## Project Versions
+calc = POIAccessibilityCalculator(
+    postcodes_path="data/postcodes/postcodes.parquet",
+    results_dir="data/routing_results/",
+    batch_size=50,
+    k_nearest=4,
+    costing="auto"  # driving mode
+)
 
-- **AHAH v3**: The code for the previous version can be found under [v3 Release](https://github.com/ESRC-CDRC/ahah/releases/tag/v3).
-- **AHAH v4**: The current codebase represents AHAH v4. This is the latest version, which you can find [here](https://github.com/ESRC-CDRC/ahah/releases/tag/v4).
+# Process multiple POI categories
+calc.calculate_batch([
+    "data/poi/GP.parquet",
+    "data/poi/pharmacy.parquet",
+    "data/poi/hospital.parquet",
+    "data/poi/dentist.parquet",
+    "data/poi/leisure.parquet",
+    "data/poi/fast_food.parquet",
+    "data/poi/gambling.parquet",
+    "data/poi/pub_bar.parquet",
+    "data/poi/tobacco.parquet",
+    "data/poi/bluespace.parquet",
+])
+```
 
+### 4. Index Construction (`AHAH_Build_Indicator.ipynb`)
+
+Aggregates accessibility measures and constructs the composite index:
+
+```python
+from AHAH_Build_Indicator import calculate_ahah
+
+# Aggregate postcode-level results to LSOA means
+accessibility = aggregate_routing_results("data/routing_results/")
+
+# Merge with air quality and greenspace
+ahah_input = accessibility.merge(air_quality).merge(greenspace)
+
+# Calculate domain scores and composite index
+ahah_v5 = calculate_ahah(ahah_input)
+ahah_v5.to_csv("AHAH_V5.csv", index=False)
+```
+
+## Core Modules
+
+### `valhalla_cluster.py`
+
+Manages a Docker-based Valhalla routing cluster for high-throughput route calculations.
+
+| Method | Description |
+|--------|-------------|
+| `build_tiles()` | Downloads OSM data and builds routing graph |
+| `generate_compose()` | Creates docker-compose.yml for worker cluster |
+| `apply_optimisations()` | Tunes Valhalla config for batch processing |
+| `start()` / `stop()` | Cluster lifecycle management |
+| `health_check()` | Verifies all workers are responsive |
+
+### `poi_accessibility.py`
+
+Calculates travel times from postcodes to points of interest using parallel requests.
+
+| Method | Description |
+|--------|-------------|
+| `detect_cluster()` | Auto-discovers active Valhalla workers |
+| `calculate()` | Process single POI dataset |
+| `calculate_batch()` | Process multiple POI datasets with resume support |
+
+## Index Methodology
+
+The AHAH index follows a standardised construction methodology:
+
+1. **Ranking** — Each indicator is ranked across all small areas:
+   - Health/access indicators: ascending (lower distance = better)
+   - Greenspace (NDVI): descending (higher = better)
+   - Hazards: descending (further distance = better)
+
+2. **Normalisation** — Ranks are transformed using the inverse normal (probit) function
+
+3. **Domain Scores** — Transformed indicators are averaged within each domain
+
+4. **Exponential Transformation** — Domain ranks are transformed using:
+   ```
+   score = -23 × ln(1 - (rank/n) × (1 - e^(-100/23)))
+   ```
+5. **Composite Score** — Equal-weighted average of four domain scores
+
+Higher AHAH scores indicate less healthy environments.
+
+## Output Variables
+
+The final dataset includes:
+
+| Variable | Description |
+|----------|-------------|
+| `lsoa21cd` | LSOA/Data Zone code |
+| `GP`, `dentist`, etc. | Raw accessibility times (minutes) |
+| `*_rnk` | National rank for each indicator |
+| `*_pct` | National percentile for each indicator |
+| `domain_h`, `domain_g`, `domain_e`, `domain_r` | Domain scores |
+| `domain_*_pct` | Domain percentiles |
+| `ahah` | Composite AHAH score |
+| `ahah_rnk` | National AHAH rank |
+| `ahah_pct` | National AHAH percentile (1-100) |
+
+## Data Sources
+
+| Domain | Indicator | Source |
+|--------|-----------|--------|
+| Health | GP surgeries | NHS Digital |
+| Health | Pharmacies | NHS Digital |
+| Health | Hospitals | NHS Digital / NHS Scotland |
+| Health | Dentists | NHS Digital |
+| Health | Leisure centres | OpenStreetMap |
+| Green/Blue | Greenspace (Ambient) | Sentinel-2 via Google Earth Engine |
+| Green/Blue | Greenspace (Active) | Ordnance Survey Greenspace |
+| Green/Blue | Bluespace | OpenStreetMap |
+| Environment | NO₂, PM₁₀, SO₂ | DEFRA air quality surfaces |
+| Retail | Fast food | OpenStreetMap |
+| Retail | Gambling | Gambling Commission |
+| Retail | Pubs/bars | OpenStreetMap |
+| Retail | Tobacco | Commercial data |
+
+## Citation
+
+If you use this code or the AHAH index, please cite:
+
+> Daras, K., Green, M.A., Davies, A. et al. Open data on health-related neighbourhood features in Great Britain. Sci Data 6, 107 (2019). (Note this is for v1 which used a different methodology.)
+
+## Acknowledgements
+
+- [Valhalla](https://github.com/valhalla/valhalla) — Open source routing engine
+- [GIS-OPS Docker Valhalla](https://github.com/gis-ops/docker-valhalla) — Docker image
+- [Geofabrik](https://download.geofabrik.de/) — OpenStreetMap extracts
+- [Google Earth Engine](https://earthengine.google.com/) — Satellite imagery processing
+
+## Related Resources
+
+- [AHAH Documentation](https://data.geods.ac.uk/dataset/access-to-healthy-assets-hazards-ahah)
